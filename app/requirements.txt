@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+httpx
+python-dotenv
+orjson
+SQLAlchemy>=2
+pymysql
+redis
+tenacity
