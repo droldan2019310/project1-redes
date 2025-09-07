@@ -227,3 +227,35 @@ def transform_order(body: dict, db: Session = Depends(get_session)):
         "odoo": odoo_payload,
         "zoho": zoho_payload
     }
+
+
+
+@app.post("/mock/odoo/invoices")
+def mock_odoo_invoices(payload: OdooInvoice):
+    """
+    Simula receptor de Odoo: valida el JSON y responde un ID ficticio.
+    """
+    if not payload.invoice_ref:
+        raise HTTPException(status_code=400, detail="invoice_ref requerido")
+
+    inv_id = f"INV-{payload.invoice_ref}"
+    return {
+        "ok": True,
+        "invoice_id": inv_id,
+        "received_lines": len(payload.invoice_lines)
+    }
+
+@app.post("/mock/zoho/salesorders")
+def mock_zoho_salesorders(payload: ZohoSalesOrder):
+    """
+    Simula receptor de Zoho: valida el JSON y responde un ID ficticio.
+    """
+    if not payload.reference_number:
+        raise HTTPException(status_code=400, detail="reference_number requerido")
+
+    so_id = f"SO-{payload.reference_number}"
+    return {
+        "ok": True,
+        "salesorder_id": so_id,
+        "received_lines": len(payload.line_items)
+    }

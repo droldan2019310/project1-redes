@@ -1,0 +1,186 @@
+{
+	"info": {
+		"_postman_id": "491687b5-df3f-44bb-94f9-f975ee0cfa15",
+		"name": "MCP SERVER",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "15890456"
+	},
+	"item": [
+		{
+			"name": "analyze",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"order_id\": 1,\n  \"prompt\" : \"El subtotal de los items coincide con el total de la orden?\"\n}   ",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/orders/analyze",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"orders",
+						"analyze"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "complete",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"prompt\": \"Resume que es una orden ecommerce\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/llm/complete",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"llm",
+						"complete"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "order paid",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"secret\": \"supersecreto\",\n  \"source\": \"laravel-core\",\n  \"order_id\": 1\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/webhooks/order_paid",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"webhooks",
+						"order_paid"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "transform",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"order_id\": 1\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/orders/transform",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"orders",
+						"transform"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "simulate_invoices",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"invoice_ref\": \"1\",\n    \"partner\": {\n        \"name\": \"Carlos GÃ³mez\",\n        \"vat\": \"9876543-1\",\n        \"email\": \"carlos@example.com\",\n        \"phone\": \"5555-1111\",\n        \"address\": {\n            \"street\": \"Zona 1, Guatemala\",\n            \"city\": \"Guatemala\",\n            \"state\": \"Guatemala\",\n            \"country\": \"GT\"\n        }\n    },\n    \"currency\": \"Guatemala\",\n    \"invoice_lines\": [\n        {\n            \"name\": \"Camiseta Roja\",\n            \"sku\": \"SKU-1001\",\n            \"quantity\": 2,\n            \"price_unit\": 100.0,\n            \"tax_amount\": 0.0,\n            \"subtotal\": 200.0\n        },\n        {\n            \"name\": \"Gorra Negra\",\n            \"sku\": \"SKU-1002\",\n            \"quantity\": 1,\n            \"price_unit\": 50.0,\n            \"tax_amount\": 0.0,\n            \"subtotal\": 50.0\n        }\n    ],\n    \"total_expected\": 250.0,\n    \"meta\": {\n        \"source\": \"MCP\",\n        \"shipping_method_id\": 1\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/mock/odoo/invoices",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"mock",
+						"odoo",
+						"invoices"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "simulate_zoho",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"reference_number\": \"1\",\n    \"customer_name\": \"Carlos GÃ³mez\",\n    \"customer_tax_id\": \"9876543-1\",\n    \"currency_code\": \"GTQ\",\n    \"line_items\": [\n        {\n            \"item_id\": \"SKU-1001\",\n            \"name\": \"Camiseta Roja\",\n            \"rate\": 100.0,\n            \"quantity\": 2,\n            \"tax_amount\": 0.0\n        },\n        {\n            \"item_id\": \"SKU-1002\",\n            \"name\": \"Gorra Negra\",\n            \"rate\": 50.0,\n            \"quantity\": 1,\n            \"tax_amount\": 0.0\n        }\n    ],\n    \"notes\": \"Urgente, entregar hoy\",\n    \"shipping_address\": {\n        \"address\": \"Zona 1, Guatemala\",\n        \"city\": \"Guatemala\",\n        \"state\": \"Guatemala\",\n        \"country\": \"Guatemala\"\n    },\n    \"org_id\": \"\",\n    \"custom_fields\": [\n        {\n            \"label\": \"phone\",\n            \"value\": \"5555-1111\"\n        },\n        {\n            \"label\": \"email\",\n            \"value\": \"carlos@example.com\"\n        }\n    ]\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/mock/zoho/salesorders",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"mock",
+						"zoho",
+						"salesorders"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
