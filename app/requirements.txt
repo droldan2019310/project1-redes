@@ -7,3 +7,4 @@ SQLAlchemy>=2
 pymysql
 redis
 tenacity
+cryptography
