@@ -135,3 +135,56 @@ async def send_order_to_mocks(body: dict, db: Session = Depends(get_session)):
         zoho_data = zoho_res.json()
 
     return {"ok": True, "order_id": order_id, "odoo_result": odoo_data, "zoho_result": zoho_data}
+
+@app.post("/orders/analyze")
+async def analyze_order(body: dict, db: Session = Depends(get_session)):
+    """
+    body:
+      {
+        "order_id": 1024,
+        "prompt": "opcional (sobrescribe el prompt base)",
+        "model": "opcional (modelo ollama)"
+      }
+    """
+    order_id = body.get("order_id")
+    if order_id is None:
+        raise HTTPException(status_code=400, detail="Falta order_id")
+
+    try:
+        order_id = int(order_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="order_id inválido")
+
+    order = fetch_order_by_id(db, order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="order_not_found")
+
+    items = fetch_order_items(db, order_id)
+    tags  = fetch_order_tags(db, order_id)
+    
+    subtotal_total = sum([x["subtotal"] for x in items])
+    diff = float(order["total"]) - float(subtotal_total)
+
+
+    # 1) Prompt base desde .env
+    base = BASE_ANALYZE_PROMPT.strip()
+
+    # 2) Permitir override desde el request (si viene 'prompt')
+    override = (body.get("prompt") or "").strip()
+    head = override if override else base
+
+    prompt = (
+        f"{head}\n\n"
+        f"ORDER: {dict(order)}\n"
+        f"ITEMS: {[dict(x) for x in items]}\n"
+        f"TAGS: {tags}\n"
+        f"\nNota: El subtotal de los items es {subtotal_total}, "
+        f"el total de la orden es {order['total']}, diferencia={diff}.\n"
+    )
+    print(f"[order items] prompt: {prompt}")
+    model = body.get("model")  # si None, usa OLLAMA_MODEL
+    try:
+        analysis = await ollama_generate(prompt, model=model)
+        return {"ok": True, "order_id": order_id, "analysis": analysis}
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=502, detail=f"Ollama error: {e}")

@@ -1,3 +1,56 @@
+CREATE TABLE IF NOT EXISTS orders (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    businessid BIGINT,
+    name_shipping VARCHAR(255),
+    NIT VARCHAR(50),
+    address_shipping VARCHAR(255),
+    statusid BIGINT,
+    date_request DATETIME,
+    phone_shipping VARCHAR(50),
+    email_shipping VARCHAR(255),
+    city_shipping VARCHAR(100),
+    region_shipping VARCHAR(100),
+    weight DECIMAL(10,2),
+    payment_method VARCHAR(50),
+    sourceid BIGINT,
+    total DECIMAL(10,2),
+    voided TINYINT(1) DEFAULT 0,
+    metadata JSON,
+    delivery_time VARCHAR(100),
+    created_by BIGINT,
+    updated_by BIGINT,
+    instagram_user VARCHAR(100),
+    facebook_name VARCHAR(100),
+    tiktok_user VARCHAR(100),
+    guia VARCHAR(100),
+    no_factura VARCHAR(100),
+    guia_link VARCHAR(255),
+    id_source BIGINT,
+    source_guia_id BIGINT,
+    source_name_id BIGINT,
+    status_shipping_id BIGINT,
+    status_payment_id BIGINT,
+    comment TEXT,
+    shipping_method_id BIGINT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS order_items (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    orderid BIGINT NOT NULL,
+    product_sku VARCHAR(100),
+    product_name VARCHAR(255),
+    quantity INT NOT NULL,
+    price DECIMAL(10,2) NOT NULL,
+    subtotal DECIMAL(10,2) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (orderid) REFERENCES orders(id)
+);
+
+
+-- Datos dummy
 -- Más datos dummy (10 órdenes)
 INSERT INTO orders (businessid, name_shipping, NIT, address_shipping, statusid, date_request,
     phone_shipping, email_shipping, city_shipping, region_shipping, weight,
@@ -65,20 +118,6 @@ VALUES
  'elena_insta', 'elena_fb', 'elena_tiktok', 'G109', 'F012', 'http://example.com/guia/12', 12,
  112, 212, 1, 1, 'Enviar confirmación por correo', 1);
 
-
-
-CREATE TABLE IF NOT EXISTS order_items (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    orderid BIGINT NOT NULL,
-    product_sku VARCHAR(100),
-    product_name VARCHAR(255),
-    quantity INT NOT NULL,
-    price DECIMAL(10,2) NOT NULL,
-    subtotal DECIMAL(10,2) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (orderid) REFERENCES orders(id)
-);
 
 -- Items para order_id 1
 INSERT INTO order_items (orderid, product_sku, product_name, quantity, price, subtotal)

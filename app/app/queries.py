@@ -16,19 +16,26 @@ def fetch_order_by_id(db: Session, order_id: int):
     return db.execute(sql, {"id": order_id}).mappings().first()
 
 def fetch_order_items(db: Session, order_id: int):
-    """
-    Si aún no creaste la tabla order_items, devolverá lista vacía sin romper.
-    Espera columnas: orderid, sku, name, qty, price, tax_amount (ajusta a tu esquema real)
-    """
+   
     try:
         sql = text("""
-            SELECT orderid, sku, name, qty, price, tax_amount
+            SELECT
+              orderid,
+              product_sku   AS sku,
+              product_name  AS name,
+              quantity      AS qty,
+              price         AS price,
+              subtotal      AS subtotal,
+              0.0           AS tax_amount
             FROM order_items
             WHERE orderid = :id
         """)
         return list(db.execute(sql, {"id": order_id}).mappings())
-    except Exception:
+    except Exception as e:
+        # logueamos el error para depuración
+        print(f"[fetch_order_items] error: {e}")
         return []
+
 
 def fetch_order_tags(db: Session, order_id: int):
     """
