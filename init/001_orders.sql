@@ -60,7 +60,7 @@ INSERT INTO orders (businessid, name_shipping, NIT, address_shipping, statusid, 
 VALUES
 (3, 'Carlos Gómez', '9876543-1', 'Zona 1, Guatemala', 1, NOW(),
  '5555-1111', 'carlos@example.com', 'Guatemala', 'Guatemala', 3.0,
- 'tarjeta', 12, 300.00, 0, '{"gift":"yes"}', '5 días', 3, 3,
+ 'tarjeta', 12, 250.00, 0, '{"gift":"yes"}', '5 días', 3, 3,
  'carlos_insta', 'carlos_fb', 'carlos_tiktok', 'G789', 'F003', 'http://example.com/guia/3', 3,
  103, 203, 1, 1, 'Urgente, entregar hoy', 1),
 
