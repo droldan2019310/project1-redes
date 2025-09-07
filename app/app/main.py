@@ -188,3 +188,42 @@ async def analyze_order(body: dict, db: Session = Depends(get_session)):
         return {"ok": True, "order_id": order_id, "analysis": analysis}
     except httpx.HTTPError as e:
         raise HTTPException(status_code=502, detail=f"Ollama error: {e}")
+
+
+@app.post("/orders/transform")
+def transform_order(body: dict, db: Session = Depends(get_session)):
+    """
+    Transforma una orden a los payloads requeridos por Odoo y Zoho, sin enviarlos.
+    body:
+      {
+        "order_id": 1
+      }
+    """
+    order_id = body.get("order_id")
+    if not order_id:
+        raise HTTPException(status_code=400, detail="Falta order_id")
+
+    order = fetch_order_by_id(db, int(order_id))
+    if not order:
+        raise HTTPException(status_code=404, detail="order_not_found")
+
+    items = fetch_order_items(db, int(order_id))
+
+    # Validaciones mínimas antes de transformar
+    try:
+        validate_items_present(items)
+        validate_customer(order)
+        validate_basic_totals(order, items)
+    except ValidationError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+
+    # Construir payloads
+    odoo_payload = build_odoo_invoice(order, items)
+    zoho_payload = build_zoho_sales_order(order, items, os.getenv("ORG_ID_ZOHO", ""))
+
+    return {
+        "ok": True,
+        "order_id": int(order_id),
+        "odoo": odoo_payload,
+        "zoho": zoho_payload
+    }
