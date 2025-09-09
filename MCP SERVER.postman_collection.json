@@ -71,7 +71,7 @@
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n  \"secret\": \"supersecreto\",\n  \"source\": \"laravel-core\",\n  \"order_id\": 1\n}",
+					"raw": "{\n  \"secret\": \"supersecreto\",\n  \"source\": \"laravel-core\",\n  \"order_id\": 2\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -179,6 +179,70 @@
 						"salesorders"
 					]
 				}
+			},
+			"response": []
+		},
+		{
+			"name": "initialize",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{}}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/mcp",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"mcp"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "tools",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\",\"params\":{}}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/mcp",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"mcp"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "analyze-mcp",
+			"request": {
+				"method": "GET",
+				"header": []
 			},
 			"response": []
 		}
