@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from decimal import Decimal
 import os, json, httpx, hashlib
+from .sessions import create_session, append_message, get_history
 
 # ====== CONFIG ======
 PROTOCOL_VERSION = "2024-09"
@@ -50,7 +51,8 @@ TOOLS = [
             "properties": {
                 "order_id": {"type": "integer"},
                 "prompt": {"type": "string"},
-                "model": {"type": "string"}
+                "model": {"type": "string"},
+                "session_id": {"type": "integer"}  
             }
         }
     },
@@ -60,7 +62,11 @@ TOOLS = [
         "inputSchema": {
             "type": "object",
             "required": ["order_id"],
-            "properties": {"order_id": {"type": "integer"}}
+            "properties": {
+                "order_id": {"type": "integer"},
+                "session_id": {"type": "integer"}  
+
+            }
         }
     },
     {
@@ -69,7 +75,9 @@ TOOLS = [
         "inputSchema": {
             "type": "object",
             "required": ["order_id"],
-            "properties": {"order_id": {"type": "integer"}}
+            "properties": {"order_id": {"type": "integer"},            
+                            "session_id": {"type": "integer"} 
+            }
         }
     },
     {
@@ -81,8 +89,26 @@ TOOLS = [
             "properties": {
                 "order_id": {"type": "integer"},
                 "secret":   {"type": "string"},
-                "source":   {"type": "string"}
+                "source":   {"type": "string"},
+                "session_id": {"type": "integer"} 
             }
+        }
+    },
+    {
+        "name": "sessions.create",
+        "description": "Crea una nueva sesión y devuelve session_id",
+        "inputSchema": {
+            "type": "object",
+            "properties": { "title": {"type":"string"} }
+        }
+    },
+    {
+        "name": "sessions.get_history",
+        "description": "Devuelve el historial de una sesión",
+        "inputSchema": {
+            "type": "object",
+            "required": ["session_id"],
+            "properties": { "session_id": {"type":"integer"} }
         }
     },
 ]
@@ -108,7 +134,7 @@ async def ollama_generate(prompt: str, model: str | None = None) -> str:
         data = r.json()
     return data.get("response", "")
 
-# ====== Helpers internos que te faltaban ======
+
 def _db() -> Session:
     # get_session() es un generator (yield); aquí obtenemos una sesión usable
     return next(get_session())
@@ -117,6 +143,7 @@ async def _call_analyze(args: dict):
     order_id = int(args.get("order_id"))
     override = (args.get("prompt") or "").strip()
     model = args.get("model")
+    session_id = args.get("session_id") 
 
     db = _db()
     order = fetch_order_by_id(db, order_id)
@@ -127,7 +154,6 @@ async def _call_analyze(args: dict):
 
     head = override if override else BASE_ANALYZE_PROMPT.strip()
 
-    # Precalcular totales para guiar al LLM (evita “alucinaciones”)
     subtotal_total = float(sum([float(i.get("subtotal", 0)) for i in items]))
     total_order = float(order.get("total") or 0)
     diff = round(total_order - subtotal_total, 2)
@@ -144,28 +170,66 @@ async def _call_analyze(args: dict):
         f"Explica si cuadran o no y sugiere la siguiente acción.\n"
     )
 
+    if session_id:
+        append_message(db, int(session_id), "user", {
+            "tool": "orders.analyze",
+            "args": {"order_id": order_id, "prompt": override, "model": model},
+            "computed": {"subtotal_items": subtotal_total, "total_order": total_order, "diff": diff},
+            "prompt_to_llm": prompt
+        })
+
     analysis = await ollama_generate(prompt, model=model)
-    return {"ok": True, "order_id": order_id, "analysis": analysis}
+
+    if session_id:
+        append_message(db, int(session_id), "assistant", {
+            "tool": "orders.analyze",
+            "result_text": analysis
+        })
+
+    return {
+        "ok": True,
+        "order_id": order_id,
+        "calc": {
+            "subtotal_items": subtotal_total,
+            "total_order": total_order,
+            "difference": diff,
+            "matches": abs(diff) < 0.01
+        },
+        "analysis": analysis,
+        "session_id": int(session_id) if session_id else None
+    }
+
 
 async def _call_transform(args: dict):
     order_id = int(args.get("order_id"))
+    session_id = args.get("session_id")  
+
     db = _db()
     order = fetch_order_by_id(db, order_id)
     if not order:
         raise HTTPException(status_code=404, detail="order_not_found")
     items = fetch_order_items(db, order_id)
 
-    # Validaciones mínimas
     validate_items_present(items)
     validate_customer(order)
     validate_basic_totals(order, items)
 
     odoo_payload = build_odoo_invoice(order, items)
     zoho_payload = build_zoho_sales_order(order, items, os.getenv("ORG_ID_ZOHO",""))
-    return {"ok": True, "order_id": order_id, "odoo": odoo_payload, "zoho": zoho_payload}
+
+    if session_id:
+        append_message(db, int(session_id), "tool", {
+            "tool": "orders.transform",
+            "args": {"order_id": order_id},
+            "output": {"odoo": odoo_payload, "zoho": zoho_payload}
+        })
+
+    return {"ok": True, "order_id": order_id, "odoo": odoo_payload, "zoho": zoho_payload, "session_id": int(session_id) if session_id else None}
 
 async def _call_send_mock(args: dict):
     order_id = int(args.get("order_id"))
+    session_id = args.get("session_id") 
+
     db = _db()
     order = fetch_order_by_id(db, order_id)
     if not order:
@@ -187,27 +251,40 @@ async def _call_send_mock(args: dict):
         odoo_data = odoo_res.json()
         zoho_data = zoho_res.json()
 
-    return {"ok": True, "order_id": order_id, "odoo_result": odoo_data, "zoho_result": zoho_data}
+    if session_id:
+        append_message(db, int(session_id), "tool", {
+            "tool": "orders.send_mock",
+            "args": {"order_id": order_id},
+            "payloads": {"odoo": odoo_payload, "zoho": zoho_payload},
+            "results": {"odoo_result": odoo_data, "zoho_result": zoho_data}
+        })
+
+    return {
+        "ok": True, "order_id": order_id,
+        "odoo_result": odoo_data, "zoho_result": zoho_data,
+        "session_id": int(session_id) if session_id else None
+    }
 
 async def _call_order_paid(args: dict):
-    # Igual que tu webhook, pero en forma de tool
     secret = args.get("secret")
     if secret != WEBHOOK_SECRET:
         raise HTTPException(status_code=401, detail="unauthorized")
 
     order_id = int(args.get("order_id"))
     source = args.get("source", "mcp-tool")
-
-    # idempotencia simple (misma que en REST)
-    key = "idempo:" + hashlib.sha256(f"{source}:{order_id}".encode()).hexdigest()
-    # Si quieres reusar redis_kv.acquire_once aquí, impórtalo y úsalo. Por simplicidad lo omitimos.
-    # from .redis_kv import acquire_once
-    # if not acquire_once(key, ttl_sec=3600): return {"ok": True, "status":"duplicate_ignored"}
+    session_id = args.get("session_id")  # <-- nuevo
 
     db = _db()
     order = fetch_order_by_id(db, order_id)
     if not order:
         raise HTTPException(status_code=404, detail="order_not_found")
+
+    # log user: intención de marcar pagado
+    if session_id:
+        append_message(db, int(session_id), "user", {
+            "tool": "webhooks.order_paid",
+            "args": {"order_id": order_id, "source": source}
+        })
 
     db.execute(
         text("UPDATE orders SET status_payment_id = :paid WHERE id = :id"),
@@ -223,16 +300,44 @@ async def _call_order_paid(args: dict):
         validate_customer(order)
         validate_basic_totals(order, items)
     except ValidationError as ve:
-        return {"ok": False, "error": str(ve), "order": dict(order), "items": [dict(i) for i in items]}
+        if session_id:
+            append_message(db, int(session_id), "assistant", {
+                "tool": "webhooks.order_paid",
+                "result": {"ok": False, "error": str(ve)}
+            })
+        return {"ok": False, "error": str(ve), "order": dict(order), "items": [dict(i) for i in items], "session_id": int(session_id) if session_id else None}
 
     odoo_payload = build_odoo_invoice(order, items)
     zoho_payload = build_zoho_sales_order(order, items, os.getenv("ORG_ID_ZOHO",""))
-    return {
+    result = {
         "ok": True,
         "status_payment_id": order.get("status_payment_id"),
         "odoo_invoice": odoo_payload,
         "zoho_sales_order": zoho_payload
     }
+
+    # log assistant: resultado
+    if session_id:
+        append_message(db, int(session_id), "assistant", {
+            "tool": "webhooks.order_paid",
+            "result": result
+        })
+
+    return {**result, "session_id": int(session_id) if session_id else None}
+
+
+
+async def _call_sessions_create(args: dict):
+    title = (args.get("title") or "").strip()
+    db = _db()
+    sid = create_session(db, title or None)
+    return {"ok": True, "session_id": sid, "title": title or None}
+
+async def _call_sessions_get_history(args: dict):
+    sid = int(args.get("session_id"))
+    db = _db()
+    hist = get_history(db, sid, limit=200)
+    return {"ok": True, "session_id": sid, "messages": hist}
 
 # ====== Punto único JSON-RPC sobre HTTP ======
 @mcp.post("/mcp")
@@ -266,6 +371,10 @@ async def mcp_http(body: dict):
                 return make_result(_id, await _call_send_mock(args))
             if name == "webhooks.order_paid":
                 return make_result(_id, await _call_order_paid(args))
+            if name == "sessions.create":
+                return make_result(_id, await _call_sessions_create(args))
+            if name == "sessions.get_history":
+                return make_result(_id, await _call_sessions_get_history(args))
             return make_error(_id, -32601, f"Method not found: {name}")
 
         return make_error(_id, -32601, f"Unknown method: {method}")
